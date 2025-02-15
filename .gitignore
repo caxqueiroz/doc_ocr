@@ -3,3 +3,4 @@ results/
 .ocr/
 logs/
 .env
+__pycache__/

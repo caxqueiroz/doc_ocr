@@ -17,7 +17,7 @@ class Config:
 
     # LLM Models
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    OLLAMA_DEFAULT_MODEL: str = os.getenv("OLLAMA_DEFAULT_MODEL", "llava")
+    OLLAMA_DEFAULT_MODEL: str = os.getenv("OLLAMA_DEFAULT_MODEL", "llama3.2-vision:latest")
 
     # OpenAI (if needed)
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")

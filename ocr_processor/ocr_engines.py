@@ -117,11 +117,8 @@ class OllamaLLMEngine(OCREngine):
         self.model_name = model_name
 
     def _encode_image(self, image_path: str) -> str:
-        """
-        Encode an image into a string that can be processed by the LLM
-        """
-        with open(image_path, "rb") as f:
-            return base64.b64encode(f.read()).decode("utf-8")
+        with open(image_path, 'rb') as f:
+            return base64.b64encode(f.read()).decode('utf-8')
 
     def process_image(self, image_path: str) -> Dict[str, Any]:
         """
@@ -129,38 +126,25 @@ class OllamaLLMEngine(OCREngine):
         """
         try:
             image_base64 = self._encode_image(image_path)
-            prompt = """Please look at this image and extract all the text content.
-Structure the output as JSON with these guidelines:
-                - Identify different sections or components
-                - Use appropriate keys for different text elements
-                - Maintain the hierarchical structure of the content
-                - Include all visible text from the image"""
+            prompt = "Extract all text from this image. List every piece of text you can see, including numbers, dates, and labels."
 
-            payload = {
-                "model": self.model_name,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": prompt},
-                            {
-                                "type": "image_url",
-                                "image_url": (f"data:image/jpeg;base64,{image_base64}"),
-                            },
-                        ],
-                    }
-                ],
-                "stream": False,
-            }
-            response = requests.post(f"{config.OLLAMA_BASE_URL}/api/chat", json=payload)
+            # Create request with the image and prompt
+            response = requests.post(
+                f"{config.OLLAMA_BASE_URL}/api/generate",
+                json={
+                    "model": self.model_name,
+                    "prompt": prompt,
+                    "stream": False,
+                    "images": [image_base64]
+                }
+            )
             response.raise_for_status()
-
-            # Extract the response text from Ollama's response
             result = response.json()
+
             return {
                 "engine": "ollama",
                 "model": self.model_name,
-                "text": result.get("message", {}).get("content", ""),
+                "text": result.get("response", ""),
                 "raw_response": result,
             }
         except Exception as e:
