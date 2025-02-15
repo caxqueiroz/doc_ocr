@@ -1,10 +1,15 @@
 import os
+import logging
 from pathlib import Path
 from typing import Optional
 from dotenv import load_dotenv
 
+logger = logging.getLogger(__name__)
+
 # Load environment variables from .env file
-load_dotenv()
+env_path = Path(__file__).parent.parent / '.env'
+logger.info(f'Loading .env from {env_path}')
+load_dotenv(env_path)
 
 
 class Config:
@@ -17,11 +22,14 @@ class Config:
 
     # LLM Models
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    OLLAMA_DEFAULT_MODEL: str = os.getenv("OLLAMA_DEFAULT_MODEL", "llama3.2-vision:latest")
+    OLLAMA_DEFAULT_MODEL: str = os.getenv(
+        "OLLAMA_DEFAULT_MODEL", "llama3.2-vision:latest"
+    )
 
     # OpenAI (if needed)
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4-vision-preview")
+    OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
 
     # API Configuration
     API_HOST: str = os.getenv("API_HOST", "0.0.0.0")
