@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 # Load environment variables from .env file
 env_path = Path(__file__).parent.parent / '.env'
 logger.info(f'Loading .env from {env_path}')
-load_dotenv(env_path)
+load_dotenv(env_path, override=True)
 
 
 class Config:
@@ -25,11 +25,17 @@ class Config:
     OLLAMA_DEFAULT_MODEL: str = os.getenv(
         "OLLAMA_DEFAULT_MODEL", "llama3.2-vision:latest"
     )
+    OLLAMA_NER_MODEL: str = os.getenv(
+        "OLLAMA_NER_MODEL", "llama3.2-vision:latest"
+    )
 
     # OpenAI (if needed)
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4-vision-preview")
     OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+
+    # Replicate (for Llama)
+    REPLICATE_API_TOKEN: Optional[str] = os.getenv("REPLICATE_API_TOKEN")
 
     # API Configuration
     API_HOST: str = os.getenv("API_HOST", "0.0.0.0")
