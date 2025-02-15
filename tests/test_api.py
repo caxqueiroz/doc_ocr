@@ -1,6 +1,5 @@
-import os
 from pathlib import Path
-import pytest
+
 from fastapi.testclient import TestClient
 from api import app
 
@@ -8,7 +7,7 @@ from api import app
 client = TestClient(app)
 
 
-def test_process_invoice():
+def test_process_invoice() -> None:
     """Test processing an invoice image through the API"""
     # Get the path to the test image
     image_path = Path(__file__).parent.parent / "data" / "invoice.jpeg"
@@ -37,7 +36,7 @@ def test_process_invoice():
     assert len(data["results"]["TesseractEngine"]["text"]) > 0
 
 
-def test_process_invalid_file():
+def test_process_invalid_file() -> None:
     """Test uploading an invalid file type"""
     # Create a temporary text file
     test_file_content = b"This is not an image"
@@ -51,7 +50,7 @@ def test_process_invalid_file():
     assert "Unsupported file type" in data["detail"]
 
 
-def test_health_check():
+def test_health_check() -> None:
     """Test the health check endpoint"""
     response = client.get("/health")
     assert response.status_code == 200

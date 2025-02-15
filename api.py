@@ -3,7 +3,7 @@ from pathlib import Path
 import tempfile
 import shutil
 import logging
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Dict
 from pydantic import BaseModel, ConfigDict
 from ocr_processor.ocr_engines import EasyOCREngine, TesseractEngine, OCREngine
 from ocr_processor.processor import OCRProcessor
@@ -37,10 +37,14 @@ class OCRResponse(BaseModel):
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
-        json_encoders={np.integer: int, np.floating: float, np.ndarray: lambda x: x.tolist()}
+        json_encoders={
+            np.integer: int,
+            np.floating: float,
+            np.ndarray: lambda x: x.tolist(),
+        },
     )
 
-    def model_dump(self, **kwargs):
+    def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
         data = super().model_dump(**kwargs)
         return {k: convert_numpy(v) for k, v in data.items()}
 

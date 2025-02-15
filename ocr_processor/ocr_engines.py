@@ -52,9 +52,21 @@ class EasyOCREngine(OCREngine):
                 "engine": "easyocr",
                 "text": " ".join([result[1] for result in results]),
                 "confidence": [float(result[2]) for result in results],
-                "boxes": [[int(coord) if isinstance(coord, np.integer) else
-                           float(coord) if isinstance(coord, np.floating) else coord
-                           for coord in box] for box in [result[0] for result in results]],
+                "boxes": [
+                    [
+                        (
+                            int(coord)
+                            if isinstance(coord, np.integer)
+                            else (
+                                float(coord)
+                                if isinstance(coord, np.floating)
+                                else coord
+                            )
+                        )
+                        for coord in box
+                    ]
+                    for box in [result[0] for result in results]
+                ],
             }
         except Exception as e:
             logger.error(f"Error processing image with EasyOCR: {str(e)}")
