@@ -1,15 +1,18 @@
-.PHONY: help install run-api run-cli test lint clean setup-dev
+.PHONY: help install run-api run-cli test lint clean setup-dev setup-ollama
 
 # Default target when just running 'make'
 help:
 	@echo "Available commands:"
-	@echo "  make install      - Install all dependencies"
-	@echo "  make setup-dev    - Setup development environment"
-	@echo "  make run-api      - Run the FastAPI server"
-	@echo "  make run-cli      - Run the CLI (requires INPUT and OUTPUT args)"
-	@echo "  make test         - Run tests"
-	@echo "  make lint         - Run linting"
-	@echo "  make clean        - Clean up temporary files"
+	@echo "  make install       - Install all dependencies"
+	@echo "  make setup-dev     - Setup development environment"
+	@echo "  make setup-ollama  - Setup Ollama and pull required models"
+	@echo "  make run-api       - Run the FastAPI server"
+	@echo "  make run-cli       - Run the CLI (requires INPUT and OUTPUT args)"
+	@echo "  make test          - Run tests"
+	@echo "  make test-ocr      - Run OCR-specific tests"
+	@echo "  make test-ner      - Run NER-specific tests"
+	@echo "  make lint          - Run linting"
+	@echo "  make clean         - Clean up temporary files"
 
 # Install dependencies
 install:
@@ -19,6 +22,16 @@ install:
 setup-dev:
 	pip install -r requirements.txt
 	pip install pytest pytest-cov black flake8 mypy
+
+# Setup Ollama and pull required models
+setup-ollama:
+	@echo "Checking if Ollama is installed..."
+	@if ! command -v ollama >/dev/null 2>&1; then \
+		echo "Installing Ollama..."; \
+		brew install ollama; \
+	fi
+	@echo "Pulling required Ollama models..."
+	@ollama pull llama3.2-vision:latest
 
 # Run the API server
 run-api:
@@ -38,7 +51,15 @@ run-cli:
 
 # Run tests
 test:
-	pytest tests/ --cov=ocr_processor -v
+	pytest tests/ --cov=ocr_processor --cov=ner_processor -v
+
+# Run OCR-specific tests
+test-ocr:
+	pytest tests/test_ocr*.py -v
+
+# Run NER-specific tests
+test-ner:
+	pytest tests/test_ner*.py -v
 
 # Run linting
 lint:
