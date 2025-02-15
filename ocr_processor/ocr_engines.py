@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import easyocr
 import pytesseract
+import numpy as np
 from PIL import Image
 import pdf2image
 from typing import List, Dict, Any
@@ -50,8 +51,10 @@ class EasyOCREngine(OCREngine):
             return {
                 "engine": "easyocr",
                 "text": " ".join([result[1] for result in results]),
-                "confidence": [result[2] for result in results],
-                "boxes": [result[0] for result in results],
+                "confidence": [float(result[2]) for result in results],
+                "boxes": [[int(coord) if isinstance(coord, np.integer) else
+                           float(coord) if isinstance(coord, np.floating) else coord
+                           for coord in box] for box in [result[0] for result in results]],
             }
         except Exception as e:
             logger.error(f"Error processing image with EasyOCR: {str(e)}")

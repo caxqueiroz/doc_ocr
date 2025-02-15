@@ -3,10 +3,11 @@ from pathlib import Path
 import tempfile
 import shutil
 import logging
-from typing import List, Optional
-from pydantic import BaseModel
+from typing import List, Optional, Any
+from pydantic import BaseModel, ConfigDict
 from ocr_processor.ocr_engines import EasyOCREngine, TesseractEngine, OCREngine
 from ocr_processor.processor import OCRProcessor
+import numpy as np
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,9 +21,28 @@ app = FastAPI(
 engines = [EasyOCREngine(languages=["en"]), TesseractEngine(lang="eng")]
 
 
+def convert_numpy(obj: Any) -> Any:
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    return obj
+
+
 class OCRResponse(BaseModel):
     filename: str
     results: dict
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        json_encoders={np.integer: int, np.floating: float, np.ndarray: lambda x: x.tolist()}
+    )
+
+    def model_dump(self, **kwargs):
+        data = super().model_dump(**kwargs)
+        return {k: convert_numpy(v) for k, v in data.items()}
 
 
 @app.post("/process", response_model=OCRResponse)

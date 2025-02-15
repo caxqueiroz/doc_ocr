@@ -3,6 +3,7 @@ from typing import List, Dict, Any
 import json
 from pathlib import Path
 import logging
+import numpy as np
 from .ocr_engines import OCREngine
 
 logging.basicConfig(level=logging.INFO)
@@ -34,7 +35,7 @@ class OCRProcessor:
                 else:
                     continue
 
-                results[engine.__class__.__name__] = result
+                results[engine.__class__.__name__] = self._convert_numpy_types(result)
             except Exception as e:
                 logger.error(
                     f"Error processing {file_path} with {engine.__class__.__name__}: {str(e)}"
@@ -42,6 +43,22 @@ class OCRProcessor:
                 results[engine.__class__.__name__] = {"error": str(e)}
 
         return results
+
+    def _convert_numpy_types(self, obj: Any) -> Any:
+        """Convert numpy types to Python native types"""
+        if isinstance(obj, dict):
+            return {k: self._convert_numpy_types(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_numpy_types(item) for item in obj]
+        elif isinstance(obj, tuple):
+            return tuple(self._convert_numpy_types(item) for item in obj)
+        elif isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return obj
 
     def process_directory(
         self, input_dir: str | Path, recursive: bool = True
