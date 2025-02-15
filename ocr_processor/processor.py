@@ -10,14 +10,14 @@ logger = logging.getLogger(__name__)
 
 
 class OCRProcessor:
-    def __init__(self, engines: List[OCREngine], output_dir: str):
+    def __init__(self, engines: List[OCREngine], output_dir: str) -> None:
         self.engines = engines
-        self.output_dir = output_dir
+        self.output_dir = Path(output_dir)
         os.makedirs(output_dir, exist_ok=True)
 
-    def process_file(self, file_path: str) -> Dict[str, Any]:
+    def process_file(self, file_path: str | Path) -> Dict[str, Any]:
         """Process a single file with all configured engines"""
-        file_path = Path(file_path)
+        file_path = Path(file_path) if isinstance(file_path, str) else file_path
         results = {}
 
         if not file_path.exists():
@@ -44,10 +44,10 @@ class OCRProcessor:
         return results
 
     def process_directory(
-        self, input_dir: str, recursive: bool = True
+        self, input_dir: str | Path, recursive: bool = True
     ) -> Dict[str, Any]:
         """Process all files in a directory"""
-        input_dir = Path(input_dir)
+        input_dir = Path(input_dir) if isinstance(input_dir, str) else input_dir
         if not input_dir.exists():
             return {"error": f"Directory {input_dir} does not exist"}
 
@@ -82,10 +82,17 @@ class OCRProcessor:
 class NERProcessor:
     """Placeholder for future NER processing capabilities"""
 
-    def __init__(self, model_name: str = "en_core_web_sm"):
+    def __init__(self, model_name: str = "en_core_web_sm") -> None:
         self.model_name = model_name
         # TODO: Initialize NER model
 
     def process_text(self, text: str) -> Dict[str, Any]:
-        # TODO: Implement NER processing
-        pass
+        """Process text with NER model
+
+        Args:
+            text (str): Text to process
+
+        Returns:
+            dict: Named entities extracted from text
+        """
+        raise NotImplementedError("NER processing not yet implemented")

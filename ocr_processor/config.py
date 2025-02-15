@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
-env_path = Path(__file__).parent.parent / '.env'
-logger.info(f'Loading .env from {env_path}')
+env_path = Path(__file__).parent.parent / ".env"
+logger.info(f"Loading .env from {env_path}")
 load_dotenv(env_path, override=True)
 
 
@@ -25,9 +25,7 @@ class Config:
     OLLAMA_DEFAULT_MODEL: str = os.getenv(
         "OLLAMA_DEFAULT_MODEL", "llama3.2-vision:latest"
     )
-    OLLAMA_NER_MODEL: str = os.getenv(
-        "OLLAMA_NER_MODEL", "llama3.2-vision:latest"
-    )
+    OLLAMA_NER_MODEL: str = os.getenv("OLLAMA_NER_MODEL", "llama3.2-vision:latest")
 
     # OpenAI (if needed)
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
@@ -51,7 +49,7 @@ class Config:
     TEMP_DIR: Path = Path(os.getenv("TEMP_DIR", "/tmp/ocr_processor"))
 
     @classmethod
-    def setup(cls):
+    def setup(cls) -> None:
         """Setup necessary directories and configurations"""
         # Create output directory
         cls.DEFAULT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

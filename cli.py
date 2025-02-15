@@ -1,14 +1,21 @@
 import argparse
 import logging
 from pathlib import Path
-from ocr_processor.ocr_engines import EasyOCREngine, TesseractEngine, VisionLLMEngine
+from typing import List
+from ocr_processor.ocr_engines import (
+    OCREngine,
+    EasyOCREngine,
+    TesseractEngine,
+    GPT4VisionEngine,
+    OllamaLLMEngine,
+)
 from ocr_processor.processor import OCRProcessor
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description="OCR Processing CLI")
     parser.add_argument("input_path", type=str, help="Input file or directory path")
     parser.add_argument("output_dir", type=str, help="Output directory for results")
@@ -32,16 +39,16 @@ def main():
     args = parser.parse_args()
 
     # Initialize selected engines
-    engines = []
+    engines: List[OCREngine] = []
     for engine in args.engines:
         if engine == "easyocr":
             engines.append(EasyOCREngine(languages=args.languages))
         elif engine == "tesseract":
             engines.append(TesseractEngine(lang="+".join(args.languages)))
         elif engine == "gpt4-vision-mini":
-            engines.append(VisionLLMEngine("gpt4-vision-mini"))
+            engines.append(GPT4VisionEngine())
         elif engine == "llama-vision":
-            engines.append(VisionLLMEngine("llama-3.2-vision"))
+            engines.append(OllamaLLMEngine("llama-3.2-vision"))
 
     processor = OCRProcessor(engines=engines, output_dir=args.output_dir)
 

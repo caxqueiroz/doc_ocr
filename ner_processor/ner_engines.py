@@ -2,8 +2,7 @@ import json
 import logging
 import requests
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional
-from pathlib import Path
+from typing import Dict, Any, List
 import spacy
 from openai import OpenAI
 
@@ -11,6 +10,7 @@ from ocr_processor.config import config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class BaseNEREngine(ABC):
     """Base class for all NER engines"""
@@ -51,7 +51,7 @@ class BaseNEREngine(ABC):
             str: Flattened text representation
         """
         items: List[str] = []
-        
+
         if isinstance(obj, dict):
             for k, v in obj.items():
                 new_key = f"{parent_key}{sep}{k}" if parent_key else k
@@ -71,13 +71,12 @@ class BaseNEREngine(ABC):
 
         return sep.join(items)
 
+
 class OpenAINEREngine(BaseNEREngine):
     """Named Entity Recognition engine using GPT-4 for entity extraction"""
 
-    def __init__(self):
-        self.client = OpenAI(
-            api_key=config.OPENAI_API_KEY
-        )
+    def __init__(self) -> None:
+        self.client = OpenAI(api_key=config.OPENAI_API_KEY)
         self.model = config.OPENAI_MODEL
 
     def process_text(self, text: str) -> Dict[str, Any]:
@@ -95,19 +94,24 @@ class OpenAINEREngine(BaseNEREngine):
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a Named Entity Recognition expert. Extract all entities from the text and format them in a JSON schema. Include categories like: person_name, organization, location, date, contact_info, product, quantity, price, and any other relevant entities found in the text."
+                        "content": (
+                            "You are a Named Entity Recognition expert. Extract all entities "
+                            "from the text and format them in a JSON schema. Include categories "
+                            "like: person_name, organization, location, date, contact_info, "
+                            "product, quantity, price, and any other relevant entities."
+                        ),
                     },
-                    {
-                        "role": "user",
-                        "content": text
-                    }
+                    {"role": "user", "content": text},
                 ],
                 temperature=0.3,
-                max_tokens=1000
+                max_tokens=1000,
             )
 
             # Extract JSON from response
             result_text = response.choices[0].message.content
+            if not result_text:
+                raise ValueError("Empty response from model")
+
             try:
                 # Try to parse as pure JSON
                 entities = json.loads(result_text)
@@ -123,7 +127,7 @@ class OpenAINEREngine(BaseNEREngine):
                 "engine": "gpt4-ner",
                 "model": self.model,
                 "entities": entities,
-                "raw_response": response.model_dump()
+                "raw_response": response.model_dump(),
             }
 
         except Exception as e:
@@ -156,10 +160,11 @@ class OpenAINEREngine(BaseNEREngine):
             logger.error(f"Error processing JSON schema with NER: {str(e)}")
             return {"error": str(e)}
 
+
 class OllamaNEREngine(BaseNEREngine):
     """Named Entity Recognition engine using local Ollama model"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.base_url = config.OLLAMA_BASE_URL
         self.model = config.OLLAMA_NER_MODEL
 
@@ -167,7 +172,8 @@ class OllamaNEREngine(BaseNEREngine):
         """Process plain text and extract entities using local Ollama model"""
         try:
             prompt = (
-                "You are a Named Entity Recognition expert. Extract all entities from the text below and format them in a valid JSON object. "
+                "You are a Named Entity Recognition expert. "
+                "Extract all entities from the text below and format them in a valid JSON object. "
                 "Follow these rules strictly:\n"
                 "1. Use double quotes for all property names and string values\n"
                 "2. Ensure all JSON syntax is valid\n"
@@ -184,9 +190,9 @@ class OllamaNEREngine(BaseNEREngine):
                 "- quantity: Numerical quantities\n"
                 "- price: Monetary values and prices\n\n"
                 f"Text: {text}\n\n"
-                "Respond with a valid JSON object containing the extracted entities. Only output the JSON, nothing else."
+                "Respond with a valid JSON object containing the extracted entities. "
+                "Only output the JSON, nothing else."
             )
-
 
             response = requests.post(
                 f"{self.base_url}/api/generate",
@@ -194,11 +200,8 @@ class OllamaNEREngine(BaseNEREngine):
                     "model": self.model,
                     "prompt": prompt,
                     "stream": False,
-                    "options": {
-                        "temperature": 0.3,
-                        "num_predict": 1000
-                    }
-                }
+                    "options": {"temperature": 0.3, "num_predict": 1000},
+                },
             )
             response.raise_for_status()
             result = response.json()
@@ -219,7 +222,7 @@ class OllamaNEREngine(BaseNEREngine):
                 "engine": "ollama-ner",
                 "model": self.model,
                 "entities": entities,
-                "raw_response": result
+                "raw_response": result,
             }
 
         except Exception as e:
@@ -245,10 +248,11 @@ class OllamaNEREngine(BaseNEREngine):
             logger.error(f"Error processing JSON schema with Llama NER: {str(e)}")
             return {"error": str(e)}
 
+
 class SpacyNEREngine(BaseNEREngine):
     """Named Entity Recognition engine using spaCy"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Load English language model
         try:
             self.nlp = spacy.load("en_core_web_trf")
@@ -259,8 +263,56 @@ class SpacyNEREngine(BaseNEREngine):
             except OSError:
                 # If large model not found, download and load it
                 import subprocess
+
                 subprocess.run(["python", "-m", "spacy", "download", "en_core_web_lg"])
                 self.nlp = spacy.load("en_core_web_lg")
+
+    def _initialize_entities(self) -> Dict[str, List]:
+        """Initialize empty entity categories"""
+        return {
+            "person": [],
+            "organization": [],
+            "location": [],
+            "date": [],
+            "money": [],
+            "product": [],
+            "quantity": [],
+            "contact_info": [],
+        }
+
+    def _map_entity_label(self, label: str) -> str:
+        """Map spaCy entity labels to our categories"""
+        label_mapping = {
+            "PERSON": "person",
+            "PER": "person",
+            "ORG": "organization",
+            "ORGANIZATION": "organization",
+            "GPE": "location",
+            "LOC": "location",
+            "LOCATION": "location",
+            "DATE": "date",
+            "TIME": "date",
+            "MONEY": "money",
+            "PRODUCT": "product",
+            "QUANTITY": "quantity",
+            "CARDINAL": "quantity",
+        }
+        return label_mapping.get(label, "other")
+
+    def _extract_named_entities(self, doc: Any, entities: Dict[str, List[Any]]) -> None:
+        """Extract named entities from spaCy doc"""
+        for ent in doc.ents:
+            category = self._map_entity_label(ent.label_)
+            if category:
+                entities[category].append(ent.text)
+
+    def _extract_contact_info(self, doc: Any, entities: Dict[str, List[Any]]) -> None:
+        """Extract contact information using pattern matching"""
+        for token in doc:
+            if token.like_email:
+                entities["contact_info"].append({"type": "email", "value": token.text})
+            elif token.like_num and len(token.text) >= 10:
+                entities["contact_info"].append({"type": "phone", "value": token.text})
 
     def process_text(self, text: str) -> Dict[str, Any]:
         """Process plain text and extract entities using spaCy"""
@@ -269,40 +321,11 @@ class SpacyNEREngine(BaseNEREngine):
             doc = self.nlp(text)
 
             # Initialize entity categories
-            entities = {
-                "person": [],
-                "organization": [],
-                "location": [],
-                "date": [],
-                "money": [],
-                "product": [],
-                "quantity": [],
-                "contact_info": []
-            }
+            entities = self._initialize_entities()
 
-            # Extract entities
-            for ent in doc.ents:
-                if ent.label_ in ["PERSON", "PER"]:
-                    entities["person"].append(ent.text)
-                elif ent.label_ in ["ORG", "ORGANIZATION"]:
-                    entities["organization"].append(ent.text)
-                elif ent.label_ in ["GPE", "LOC", "LOCATION"]:
-                    entities["location"].append(ent.text)
-                elif ent.label_ in ["DATE", "TIME"]:
-                    entities["date"].append(ent.text)
-                elif ent.label_ == "MONEY":
-                    entities["money"].append(ent.text)
-                elif ent.label_ == "PRODUCT":
-                    entities["product"].append(ent.text)
-                elif ent.label_ in ["QUANTITY", "CARDINAL"]:
-                    entities["quantity"].append(ent.text)
-
-            # Extract email addresses and phone numbers using pattern matching
-            for token in doc:
-                if token.like_email:
-                    entities["contact_info"].append({"type": "email", "value": token.text})
-                elif token.like_num and len(token.text) >= 10:
-                    entities["contact_info"].append({"type": "phone", "value": token.text})
+            # Extract named entities and contact information
+            self._extract_named_entities(doc, entities)
+            self._extract_contact_info(doc, entities)
 
             # Remove empty categories
             entities = {k: v for k, v in entities.items() if v}
@@ -310,7 +333,7 @@ class SpacyNEREngine(BaseNEREngine):
             return {
                 "engine": "spacy-ner",
                 "model": self.nlp.meta["name"],
-                "entities": entities
+                "entities": entities,
             }
 
         except Exception as e:

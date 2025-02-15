@@ -3,15 +3,15 @@ import json
 import logging
 from pathlib import Path
 from dotenv import load_dotenv
-from ner_processor.ner_engines import OpenAINEREngine, LlamaNEREngine, SpacyNEREngine
+from ner_processor.ner_engines import OpenAINEREngine, OllamaNEREngine, SpacyNEREngine
 
 # Load environment variables
-env_path = Path(__file__).parent.parent / '.env'
+env_path = Path(__file__).parent.parent / ".env"
 with open(env_path) as f:
     for line in f:
-        if line.startswith('OPENAI_API_KEY='):
-            key = line.split('=', 1)[1].strip()
-            os.environ['OPENAI_API_KEY'] = key
+        if line.startswith("OPENAI_API_KEY="):
+            key = line.split("=", 1)[1].strip()
+            os.environ["OPENAI_API_KEY"] = key
             break
 
 load_dotenv()
@@ -19,13 +19,10 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def test_ner_plain_text():
+
+def test_ner_plain_text() -> list:
     # Initialize the NER engines
-    engines = [
-        OpenAINEREngine(),
-        LlamaNEREngine(),
-        SpacyNEREngine()
-    ]
+    engines = [OpenAINEREngine(), OllamaNEREngine(), SpacyNEREngine()]
 
     # Test text
     text = """
@@ -51,19 +48,18 @@ def test_ner_plain_text():
         if "error" in result:
             logger.error(f"Error: {result['error']}")
         else:
-            logger.info(f"Entities extracted: {json.dumps(result['entities'], indent=2)}")
+            logger.info(
+                f"Entities extracted: {json.dumps(result['entities'], indent=2)}"
+            )
             logger.info(f"Model used: {result['model']}")
         logger.info("-" * 50)
 
     return results
 
-def test_ner_json_schema():
+
+def test_ner_json_schema() -> list:
     # Initialize the NER engines
-    engines = [
-        OpenAINEREngine(),
-        LlamaNEREngine(),
-        SpacyNEREngine()
-    ]
+    engines = [OpenAINEREngine(), OllamaNEREngine(), SpacyNEREngine()]
 
     # Test JSON schema
     json_text = """{
@@ -112,11 +108,14 @@ def test_ner_json_schema():
         if "error" in result:
             logger.error(f"Error: {result['error']}")
         else:
-            logger.info(f"Entities extracted: {json.dumps(result['entities'], indent=2)}")
+            logger.info(
+                f"Entities extracted: {json.dumps(result['entities'], indent=2)}"
+            )
             logger.info(f"Model used: {result['model']}")
         logger.info("-" * 50)
 
     return results
+
 
 if __name__ == "__main__":
     test_ner_plain_text()

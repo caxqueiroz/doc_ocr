@@ -17,11 +17,27 @@ logger = logging.getLogger(__name__)
 class OCREngine(ABC):
     @abstractmethod
     def process_image(self, image_path: str) -> Dict[str, Any]:
-        pass
+        """Process an image and extract text
+
+        Args:
+            image_path (str): Path to the image file
+
+        Returns:
+            dict: JSON schema with extracted text
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def process_pdf(self, pdf_path: str) -> Dict[str, Any]:
-        pass
+        """Process a PDF and extract text
+
+        Args:
+            pdf_path (str): Path to the PDF file
+
+        Returns:
+            dict: JSON schema with extracted text
+        """
+        raise NotImplementedError
 
 
 class EasyOCREngine(OCREngine):
@@ -127,7 +143,11 @@ class OllamaLLMEngine(OCREngine):
         """
         try:
             image_base64 = self._encode_image(image_path)
-            prompt = """Extract all text from this image. do not interpret the text, just extract it. Use JSON format"""
+            prompt = (
+                "Extract all text from this image. "
+                "Do not interpret the text, just extract it. "
+                "Use JSON format"
+            )
 
             # Create request with the image and prompt
             response = requests.post(
@@ -154,20 +174,18 @@ class OllamaLLMEngine(OCREngine):
 
     def process_pdf(self, pdf_path: str) -> Dict[str, Any]:
         # TODO: Implement vision model processing for PDFs
-        pass
+        raise NotImplementedError("PDF processing not yet implemented for this engine")
 
 
 class GPT4VisionEngine(OCREngine):
     """OCR engine that uses GPT-4 Vision API"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Clean up API key
         api_key = config.OPENAI_API_KEY.strip() if config.OPENAI_API_KEY else None
         logger.info(f"API key present: {bool(api_key)}")
-        
-        self.client = OpenAI(
-            api_key=api_key
-        )
+
+        self.client = OpenAI(api_key=api_key)
         self.model = config.OPENAI_MODEL
 
     def _encode_image(self, image_path: str) -> str:
@@ -179,7 +197,7 @@ class GPT4VisionEngine(OCREngine):
         """Process an image with GPT-4 Vision API"""
         try:
             image_base64 = self._encode_image(image_path)
-            
+
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
@@ -190,17 +208,21 @@ class GPT4VisionEngine(OCREngine):
                                 "type": "image_url",
                                 "image_url": {
                                     "url": f"data:image/jpeg;base64,{image_base64}"
-                                }
+                                },
                             },
                             {
                                 "type": "text",
-                                "text": "Extract all text from this image. Do not interpret the text, just extract it. Use JSON format"
-                            }
-                        ]
+                                "text": (
+                                    "Extract all text from this image. "
+                                    "Do not interpret the text, just extract it. "
+                                    "Use JSON format"
+                                ),
+                            },
+                        ],
                     }
                 ],
                 temperature=0.5,
-                max_tokens=1000
+                max_tokens=1000,
             )
 
             return {
@@ -216,4 +238,4 @@ class GPT4VisionEngine(OCREngine):
 
     def process_pdf(self, pdf_path: str) -> Dict[str, Any]:
         # TODO: Implement PDF processing
-        pass
+        raise NotImplementedError("PDF processing not yet implemented for GPT4Vision")

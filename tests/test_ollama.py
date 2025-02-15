@@ -7,7 +7,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def test_ollama_invoice():
+def test_ollama_invoice() -> None:
     # Initialize the Ollama engine with the default model
     engine = OllamaLLMEngine(model_name=config.OLLAMA_DEFAULT_MODEL)
 
@@ -42,7 +42,7 @@ def test_ollama_invoice():
             logger.info(f"Model used: {result['model']}")
         logger.info("-" * 50)
 
-        return result
+        return None
     except Exception as e:
         logger.error(f"Error processing image: {str(e)}")
         raise
