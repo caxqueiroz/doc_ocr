@@ -3,7 +3,6 @@ import easyocr
 import pytesseract
 import numpy as np
 from PIL import Image
-import pdf2image
 from typing import List, Dict, Any
 import logging
 import base64
@@ -94,13 +93,13 @@ class EasyOCREngine(OCREngine):
 
             # If no selectable text, process with OCR
             pages = pdf_utils.convert_pdf_to_images(pdf_path)
-            results = []
+            page_results: List[Dict[str, Any]] = []
             for i, page in enumerate(pages):
                 # Save page to temporary file
                 temp_path = f"/tmp/page_{i}.png"
                 page.save(temp_path)
                 page_result = self.reader.readtext(temp_path)
-                results.append(
+                page_results.append(
                     {
                         "page": i + 1,
                         "text": " ".join([result[1] for result in page_result]),
@@ -108,7 +107,7 @@ class EasyOCREngine(OCREngine):
                         "boxes": [result[0] for result in page_result],
                     }
                 )
-            return {"engine": "easyocr", "pages": results}
+            return {"engine": "easyocr", "pages": page_results}
         except Exception as e:
             logger.error(f"Error processing PDF with EasyOCR: {str(e)}")
             return {"error": str(e)}
@@ -152,13 +151,13 @@ class TesseractEngine(OCREngine):
 
             # If no selectable text, process with OCR
             pages = pdf_utils.convert_pdf_to_images(pdf_path)
-            results = []
+            page_results: List[Dict[str, Any]] = []
             for i, page in enumerate(pages):
                 text = pytesseract.image_to_string(page, lang=self.lang)
                 data = pytesseract.image_to_data(
                     page, lang=self.lang, output_type=pytesseract.Output.DICT
                 )
-                results.append(
+                page_results.append(
                     {
                         "page": i + 1,
                         "text": text,
@@ -170,7 +169,7 @@ class TesseractEngine(OCREngine):
                         ),
                     }
                 )
-            return {"engine": "tesseract", "pages": results}
+            return {"engine": "tesseract", "pages": page_results}
         except Exception as e:
             logger.error(f"Error processing PDF with Tesseract: {str(e)}")
             return {"error": str(e)}
@@ -178,7 +177,7 @@ class TesseractEngine(OCREngine):
 
 # Placeholder for future Vision LLM implementations
 class OllamaLLMEngine(OCREngine):
-    def __init__(self):
+    def __init__(self) -> None:
         self.model_name = config.OLLAMA_DEFAULT_MODEL
 
     def _encode_image(self, image_path: str) -> str:
@@ -229,7 +228,7 @@ class OllamaLLMEngine(OCREngine):
 
             # If no selectable text, process with OCR
             pages = pdf_utils.convert_pdf_to_images(pdf_path)
-            results = []
+            page_results: List[Dict[str, Any]] = []
 
             for i, page in enumerate(pages):
                 # Save page to temporary file
@@ -239,16 +238,18 @@ class OllamaLLMEngine(OCREngine):
                 result = self.process_image(temp_path)
                 if "error" in result:
                     raise Exception(result["error"])
-                
-                results.append({
-                    "page": i + 1,
-                    "text": result["text"],
-                    "confidence": 1.0,  # LLM doesn't provide confidence scores
-                    "boxes": [],  # LLM doesn't provide bounding boxes
-                    "raw_response": result.get("raw_response"),
-                })
 
-            return {"engine": "ollama", "model": self.model_name, "pages": results}
+                page_results.append(
+                    {
+                        "page": i + 1,
+                        "text": result["text"],
+                        "confidence": 1.0,  # LLM doesn't provide confidence scores
+                        "boxes": [],  # LLM doesn't provide bounding boxes
+                        "raw_response": result.get("raw_response"),
+                    }
+                )
+
+            return {"engine": "ollama", "model": self.model_name, "pages": page_results}
 
         except Exception as e:
             logger.error(f"Error processing PDF with LLM: {str(e)}")
@@ -337,12 +338,12 @@ class SuryaEngine(OCREngine):
             predictions = self.recognition_predictor(
                 pages, [None] * len(pages), self.detection_predictor
             )
-            results = []
+            page_results: List[Dict[str, Any]] = []
 
             for i, result in enumerate(predictions):
-                texts = []
-                confidences = []
-                boxes = []
+                texts: List[str] = []
+                confidences: List[float] = []
+                boxes: List[List[List[float]]] = []
 
                 for text_line in result.text_lines:
                     texts.append(text_line.text)
@@ -358,7 +359,7 @@ class SuryaEngine(OCREngine):
                     ]
                     boxes.append(box)
 
-                results.append(
+                page_results.append(
                     {
                         "page": i + 1,
                         "text": " ".join(texts),
@@ -368,7 +369,7 @@ class SuryaEngine(OCREngine):
                     }
                 )
 
-            return {"engine": "surya", "pages": results}
+            return {"engine": "surya", "pages": page_results}
 
         except Exception as e:
             logger.error(f"Error processing PDF with Surya: {str(e)}")
@@ -443,7 +444,7 @@ class GPT4VisionEngine(OCREngine):
 
             # If no selectable text, process with OCR
             pages = pdf_utils.convert_pdf_to_images(pdf_path)
-            results = []
+            page_results: List[Dict[str, Any]] = []
 
             for i, page in enumerate(pages):
                 # Save page to temporary file
@@ -479,7 +480,7 @@ class GPT4VisionEngine(OCREngine):
                     max_tokens=1000,
                 )
 
-                results.append(
+                page_results.append(
                     {
                         "page": i + 1,
                         "text": response.choices[0].message.content,
@@ -489,7 +490,7 @@ class GPT4VisionEngine(OCREngine):
                     }
                 )
 
-            return {"engine": "gpt4-vision", "model": self.model, "pages": results}
+            return {"engine": "gpt4-vision", "model": self.model, "pages": page_results}
 
         except Exception as e:
             logger.error(f"Error processing PDF with GPT-4 Vision: {str(e)}")

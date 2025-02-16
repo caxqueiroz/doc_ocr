@@ -48,7 +48,7 @@ def main() -> int:
         elif engine == "gpt4-vision-mini":
             engines.append(GPT4VisionEngine())
         elif engine == "llama-vision":
-            engines.append(OllamaLLMEngine("llama-3.2-vision"))
+            engines.append(OllamaLLMEngine())
 
     processor = OCRProcessor(engines=engines, output_dir=args.output_dir)
 

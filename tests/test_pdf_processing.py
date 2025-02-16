@@ -1,8 +1,7 @@
 """Test PDF processing capabilities of all OCR engines."""
-import os
+
 from pathlib import Path
 import pytest
-import PyPDF2
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from ocr_processor.ocr_engines import (
@@ -34,7 +33,7 @@ def invoice_path() -> Path:
 def selectable_pdf(test_data_dir: Path) -> Path:
     """Create a PDF with selectable text for testing."""
     pdf_path = test_data_dir / "selectable_test.pdf"
-    
+
     # Create PDF with selectable text
     c = canvas.Canvas(str(pdf_path), pagesize=letter)
     c.drawString(100, 750, "This is a test PDF with selectable text")
@@ -43,7 +42,7 @@ def selectable_pdf(test_data_dir: Path) -> Path:
     c.drawString(100, 600, "Item 2: $200")
     c.drawString(100, 550, "Total: $300")
     c.showPage()
-    
+
     # Add a second page
     c.drawString(100, 750, "Page 2 - Additional Information")
     c.drawString(100, 700, "Customer: John Doe")
@@ -51,7 +50,7 @@ def selectable_pdf(test_data_dir: Path) -> Path:
     c.drawString(100, 600, "Shipping Address: 123 Test St")
     c.showPage()
     c.save()
-    
+
     return pdf_path
 
 
@@ -59,13 +58,13 @@ def selectable_pdf(test_data_dir: Path) -> Path:
 def image_only_pdf(test_data_dir: Path, invoice_path: Path) -> Path:
     """Create a PDF with only image content (no selectable text) for testing."""
     pdf_path = test_data_dir / "image_only_test.pdf"
-    
+
     # Convert the invoice image to PDF
     c = canvas.Canvas(str(pdf_path), pagesize=letter)
     c.drawImage(str(invoice_path), 0, 0, width=600, height=800)
     c.showPage()
     c.save()
-    
+
     return pdf_path
 
 
@@ -99,10 +98,12 @@ def surya_engine() -> SuryaEngine:
     return SuryaEngine()
 
 
-def test_easyocr_selectable_pdf(easyocr_engine: EasyOCREngine, selectable_pdf: Path) -> None:
+def test_easyocr_selectable_pdf(
+    easyocr_engine: EasyOCREngine, selectable_pdf: Path
+) -> None:
     """Test that EasyOCR can process a PDF with selectable text."""
     result = easyocr_engine.process_pdf(str(selectable_pdf))
-    
+
     # Check basic structure
     assert isinstance(result, dict)
     assert "engine" in result
@@ -110,7 +111,7 @@ def test_easyocr_selectable_pdf(easyocr_engine: EasyOCREngine, selectable_pdf: P
     assert "pages" in result
     assert isinstance(result["pages"], list)
     assert len(result["pages"]) == 2  # Should have 2 pages
-    
+
     # Check content of first page
     page1 = result["pages"][0]
     assert isinstance(page1, dict)
@@ -119,7 +120,7 @@ def test_easyocr_selectable_pdf(easyocr_engine: EasyOCREngine, selectable_pdf: P
     assert "test pdf" in text
     assert "sample invoice" in text
     assert "item 1: $100" in text
-    
+
     # Check content of second page
     page2 = result["pages"][1]
     text = page2["text"].lower()
@@ -131,68 +132,74 @@ def test_easyocr_selectable_pdf(easyocr_engine: EasyOCREngine, selectable_pdf: P
 def test_easyocr_image_pdf(easyocr_engine: EasyOCREngine, image_only_pdf: Path) -> None:
     """Test that EasyOCR can process a PDF with only image content."""
     result = easyocr_engine.process_pdf(str(image_only_pdf))
-    
+
     # Should use EasyOCR for processing
     assert result["engine"] == "easyocr"
     assert "pages" in result
     assert len(result["pages"]) == 1
-    
+
     # Check content
     page = result["pages"][0]
     assert "text" in page
     assert "confidence" in page
     assert "boxes" in page
-    
+
     # Verify some expected content from the invoice
     text = page["text"].lower()
     assert any(term in text for term in ["order", "invoice", "quantity", "total"])
 
 
-def test_tesseract_selectable_pdf(tesseract_engine: TesseractEngine, selectable_pdf: Path) -> None:
+def test_tesseract_selectable_pdf(
+    tesseract_engine: TesseractEngine, selectable_pdf: Path
+) -> None:
     """Test that Tesseract can process a PDF with selectable text."""
     result = tesseract_engine.process_pdf(str(selectable_pdf))
-    
+
     assert result["engine"] == "native_pdf"
     assert "pages" in result
     assert len(result["pages"]) == 2
-    
+
     # Check content
     page1 = result["pages"][0]
     text = page1["text"].lower()
     assert "test pdf" in text
     assert "sample invoice" in text
-    
+
     page2 = result["pages"][1]
     text = page2["text"].lower()
     assert "john doe" in text
     assert "order id: 12345" in text
 
 
-def test_tesseract_image_pdf(tesseract_engine: TesseractEngine, image_only_pdf: Path) -> None:
+def test_tesseract_image_pdf(
+    tesseract_engine: TesseractEngine, image_only_pdf: Path
+) -> None:
     """Test that Tesseract can process a PDF with only image content."""
     result = tesseract_engine.process_pdf(str(image_only_pdf))
-    
+
     assert result["engine"] == "tesseract"
     assert "pages" in result
     assert len(result["pages"]) == 1
-    
+
     page = result["pages"][0]
     assert "text" in page
     assert "confidence" in page
     assert "boxes" in page
-    
+
     text = page["text"].lower()
     assert any(term in text for term in ["order", "invoice", "quantity", "total"])
 
 
-def test_ollama_selectable_pdf(ollama_engine: OllamaLLMEngine, selectable_pdf: Path) -> None:
+def test_ollama_selectable_pdf(
+    ollama_engine: OllamaLLMEngine, selectable_pdf: Path
+) -> None:
     """Test that Ollama can process a PDF with selectable text."""
     result = ollama_engine.process_pdf(str(selectable_pdf))
-    
+
     assert result["engine"] == "native_pdf"
     assert "pages" in result
     assert len(result["pages"]) == 2
-    
+
     page1 = result["pages"][0]
     text = page1["text"].lower()
     assert "test pdf" in text
@@ -202,27 +209,29 @@ def test_ollama_selectable_pdf(ollama_engine: OllamaLLMEngine, selectable_pdf: P
 def test_ollama_image_pdf(ollama_engine: OllamaLLMEngine, image_only_pdf: Path) -> None:
     """Test that Ollama can process a PDF with only image content."""
     result = ollama_engine.process_pdf(str(image_only_pdf))
-    
+
     assert result["engine"] == "ollama"
     assert "pages" in result
     assert len(result["pages"]) == 1
-    
+
     page = result["pages"][0]
     assert "text" in page
     assert "raw_response" in page
-    
+
     text = page["text"].lower()
     assert any(term in text for term in ["order", "invoice", "quantity", "total"])
 
 
-def test_gpt4_selectable_pdf(gpt4_engine: GPT4VisionEngine, selectable_pdf: Path) -> None:
+def test_gpt4_selectable_pdf(
+    gpt4_engine: GPT4VisionEngine, selectable_pdf: Path
+) -> None:
     """Test that GPT-4 Vision can process a PDF with selectable text."""
     result = gpt4_engine.process_pdf(str(selectable_pdf))
-    
+
     assert result["engine"] == "native_pdf"
     assert "pages" in result
     assert len(result["pages"]) == 2
-    
+
     page1 = result["pages"][0]
     text = page1["text"].lower()
     assert "test pdf" in text
@@ -232,15 +241,15 @@ def test_gpt4_selectable_pdf(gpt4_engine: GPT4VisionEngine, selectable_pdf: Path
 def test_gpt4_image_pdf(gpt4_engine: GPT4VisionEngine, image_only_pdf: Path) -> None:
     """Test that GPT-4 Vision can process a PDF with only image content."""
     result = gpt4_engine.process_pdf(str(image_only_pdf))
-    
+
     assert result["engine"] == "gpt4-vision"
     assert "pages" in result
     assert len(result["pages"]) == 1
-    
+
     page = result["pages"][0]
     assert "text" in page
     assert "raw_response" in page
-    
+
     text = page["text"].lower()
     assert any(term in text for term in ["order", "invoice", "quantity", "total"])
 
@@ -248,11 +257,11 @@ def test_gpt4_image_pdf(gpt4_engine: GPT4VisionEngine, image_only_pdf: Path) -> 
 def test_surya_selectable_pdf(surya_engine: SuryaEngine, selectable_pdf: Path) -> None:
     """Test that Surya can process a PDF with selectable text."""
     result = surya_engine.process_pdf(str(selectable_pdf))
-    
+
     assert result["engine"] == "native_pdf"
     assert "pages" in result
     assert len(result["pages"]) == 2
-    
+
     page1 = result["pages"][0]
     text = page1["text"].lower()
     assert "test pdf" in text
@@ -262,16 +271,16 @@ def test_surya_selectable_pdf(surya_engine: SuryaEngine, selectable_pdf: Path) -
 def test_surya_image_pdf(surya_engine: SuryaEngine, image_only_pdf: Path) -> None:
     """Test that Surya can process a PDF with only image content."""
     result = surya_engine.process_pdf(str(image_only_pdf))
-    
+
     assert result["engine"] == "surya"
     assert "pages" in result
     assert len(result["pages"]) == 1
-    
+
     page = result["pages"][0]
     assert "text" in page
     assert "confidence" in page
     assert "boxes" in page
-    
+
     text = page["text"].lower()
     assert any(term in text for term in ["order", "invoice", "quantity", "total"])
 
@@ -291,9 +300,9 @@ def test_pdf_error_handling(
         ("GPT-4 Vision", gpt4_engine),
         ("Surya", surya_engine),
     ]
-    
+
     non_existent_path = "/path/to/nonexistent.pdf"
-    
+
     for engine_name, engine in engines:
         result = engine.process_pdf(non_existent_path)
         assert isinstance(result, dict)

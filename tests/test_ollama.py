@@ -1,15 +1,15 @@
 import logging
 from pathlib import Path
 from ocr_processor.ocr_engines import OllamaLLMEngine
-from ocr_processor.config import config
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def test_ollama_invoice() -> None:
-    # Initialize the Ollama engine with the default model
-    engine = OllamaLLMEngine(model_name=config.OLLAMA_DEFAULT_MODEL)
+    # Initialize the Ollama engine with default model from config
+    engine = OllamaLLMEngine()
 
     # Get the absolute path to the invoice image
     image_path = Path(__file__).parent.parent / "data" / "invoice.jpeg"
