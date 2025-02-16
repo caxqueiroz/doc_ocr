@@ -104,13 +104,18 @@ class TesseractEngine(OCREngine):
                 image, lang=self.lang, output_type=pytesseract.Output.DICT
             )
 
+            # Calculate average confidence, excluding -1 values (which indicate no confidence)
+            confidences = [conf for conf in data["conf"] if conf != -1]
+            avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
+
             return {
                 "engine": "tesseract",
                 "text": text,
-                "confidence": data["conf"],
+                "confidence": avg_confidence,
                 "boxes": list(
                     zip(data["left"], data["top"], data["width"], data["height"])
                 ),
+                "word_confidences": list(zip(data["text"], data["conf"])),
             }
         except Exception as e:
             logger.error(f"Error processing image with Tesseract: {str(e)}")
