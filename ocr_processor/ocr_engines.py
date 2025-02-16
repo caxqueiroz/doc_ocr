@@ -9,6 +9,8 @@ import logging
 import base64
 import requests
 from openai import OpenAI
+from surya.recognition import RecognitionPredictor
+from surya.detection import DetectionPredictor
 from .config import config
 
 logging.basicConfig(level=logging.INFO)
@@ -205,6 +207,120 @@ class OllamaLLMEngine(OCREngine):
     def process_pdf(self, pdf_path: str) -> Dict[str, Any]:
         # TODO: Implement vision model processing for PDFs
         raise NotImplementedError("PDF processing not yet implemented for this engine")
+
+
+class SuryaEngine(OCREngine):
+    """OCR engine that uses Surya for text detection and recognition."""
+
+    def __init__(self, model_name: str = "base", device: str = "cpu") -> None:
+        """Initialize Surya OCR engine.
+
+        Args:
+            model_name: The name of the Surya model to use. Default is 'base'.
+            device: Device to run inference on ('cpu' or 'cuda'). Default is 'cpu'.
+        """
+        self.recognition_predictor = RecognitionPredictor()
+        self.detection_predictor = DetectionPredictor()
+
+    def process_image(self, image_path: str) -> Dict[str, Any]:
+        """Process an image with Surya OCR.
+
+        Args:
+            image_path: Path to the image file.
+
+        Returns:
+            Dict containing OCR results with text, confidence scores, and bounding boxes.
+        """
+        try:
+            # Load and process the image
+            image = Image.open(image_path)
+            predictions = self.recognition_predictor(
+                [image], [None], self.detection_predictor
+            )
+            result = predictions[0]  # Get first image's results
+
+            # Extract text, confidence scores, and bounding boxes
+            texts = []
+            confidences = []
+            boxes = []
+
+            for text_line in result.text_lines:
+                texts.append(text_line.text)
+                confidences.append(float(text_line.confidence))
+                # Convert box coordinates to our standard format
+                box = [
+                    [float(x), float(y)]
+                    for x, y in [
+                        (text_line.bbox[0], text_line.bbox[1]),  # top-left
+                        (text_line.bbox[2], text_line.bbox[1]),  # top-right
+                        (text_line.bbox[2], text_line.bbox[3]),  # bottom-right
+                        (text_line.bbox[0], text_line.bbox[3]),  # bottom-left
+                    ]
+                ]
+                boxes.append(box)
+
+            return {
+                "engine": "surya",
+                "text": " ".join(texts),
+                "confidence": confidences,
+                "boxes": boxes,
+                "word_data": list(zip(texts, confidences)),
+            }
+
+        except Exception as e:
+            logger.error(f"Error processing image with Surya: {str(e)}")
+            return {"error": str(e)}
+
+    def process_pdf(self, pdf_path: str) -> Dict[str, Any]:
+        """Process a PDF document with Surya OCR.
+
+        Args:
+            pdf_path: Path to the PDF file.
+
+        Returns:
+            Dict containing OCR results for each page.
+        """
+        try:
+            pages = pdf2image.convert_from_path(pdf_path)
+            predictions = self.recognition_predictor(
+                pages, [None] * len(pages), self.detection_predictor
+            )
+            results = []
+
+            for i, result in enumerate(predictions):
+                texts = []
+                confidences = []
+                boxes = []
+
+                for text_line in result.text_lines:
+                    texts.append(text_line.text)
+                    confidences.append(float(text_line.confidence))
+                    box = [
+                        [float(x), float(y)]
+                        for x, y in [
+                            (text_line.bbox[0], text_line.bbox[1]),
+                            (text_line.bbox[2], text_line.bbox[1]),
+                            (text_line.bbox[2], text_line.bbox[3]),
+                            (text_line.bbox[0], text_line.bbox[3]),
+                        ]
+                    ]
+                    boxes.append(box)
+
+                results.append(
+                    {
+                        "page": i + 1,
+                        "text": " ".join(texts),
+                        "confidence": confidences,
+                        "boxes": boxes,
+                        "word_data": list(zip(texts, confidences)),
+                    }
+                )
+
+            return {"engine": "surya", "pages": results}
+
+        except Exception as e:
+            logger.error(f"Error processing PDF with Surya: {str(e)}")
+            return {"error": str(e)}
 
 
 class GPT4VisionEngine(OCREngine):

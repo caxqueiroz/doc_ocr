@@ -13,3 +13,4 @@ numpy>=1.26.2
 python-dotenv
 ollama>=0.4.7
 openai>=1.0.0
+surya>=0.1.0
