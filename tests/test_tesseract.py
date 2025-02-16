@@ -17,7 +17,9 @@ def tesseract_engine() -> TesseractEngine:
     return TesseractEngine(lang="eng")
 
 
-def test_tesseract_invoice_processing(tesseract_engine: TesseractEngine, invoice_path: Path) -> None:
+def test_tesseract_invoice_processing(
+    tesseract_engine: TesseractEngine, invoice_path: Path
+) -> None:
     """Test that Tesseract can process an invoice image and extract text"""
     # Process the invoice image
     result = tesseract_engine.process_image(str(invoice_path))
@@ -45,7 +47,9 @@ def test_tesseract_invoice_processing(tesseract_engine: TesseractEngine, invoice
         assert term in text, f"Expected to find '{term}' in extracted text"
 
 
-def test_tesseract_confidence_scores(tesseract_engine: TesseractEngine, invoice_path: Path) -> None:
+def test_tesseract_confidence_scores(
+    tesseract_engine: TesseractEngine, invoice_path: Path
+) -> None:
     """Test that Tesseract returns confidence scores for extracted text"""
     result = tesseract_engine.process_image(str(invoice_path))
 
@@ -58,12 +62,14 @@ def test_tesseract_confidence_scores(tesseract_engine: TesseractEngine, invoice_
     assert "word_confidences" in result
     assert isinstance(result["word_confidences"], list)
     assert len(result["word_confidences"]) > 0
-    
+
     # Check structure of word confidences
     for word, conf in result["word_confidences"]:
         assert isinstance(word, str)
         assert isinstance(conf, (int, float))
-        assert conf == -1 or 0 <= conf <= 100  # -1 for no confidence, 0-100 for valid scores
+        assert (
+            conf == -1 or 0 <= conf <= 100
+        )  # -1 for no confidence, 0-100 for valid scores
 
 
 def test_tesseract_error_handling(tesseract_engine: TesseractEngine) -> None:

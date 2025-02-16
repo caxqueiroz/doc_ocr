@@ -17,7 +17,9 @@ def easyocr_engine() -> EasyOCREngine:
     return EasyOCREngine(languages=["en"])
 
 
-def test_easyocr_invoice_processing(easyocr_engine: EasyOCREngine, invoice_path: Path) -> None:
+def test_easyocr_invoice_processing(
+    easyocr_engine: EasyOCREngine, invoice_path: Path
+) -> None:
     """Test that EasyOCR can process an invoice image and extract text"""
     # Process the invoice image
     result = easyocr_engine.process_image(str(invoice_path))
@@ -45,7 +47,9 @@ def test_easyocr_invoice_processing(easyocr_engine: EasyOCREngine, invoice_path:
         assert term in text, f"Expected to find '{term}' in extracted text"
 
 
-def test_easyocr_confidence_and_boxes(easyocr_engine: EasyOCREngine, invoice_path: Path) -> None:
+def test_easyocr_confidence_and_boxes(
+    easyocr_engine: EasyOCREngine, invoice_path: Path
+) -> None:
     """Test that EasyOCR returns confidence scores and bounding boxes"""
     result = easyocr_engine.process_image(str(invoice_path))
 
@@ -53,7 +57,7 @@ def test_easyocr_confidence_and_boxes(easyocr_engine: EasyOCREngine, invoice_pat
     assert "confidence" in result
     assert isinstance(result["confidence"], list)
     assert len(result["confidence"]) > 0
-    
+
     # Verify confidence scores are between 0 and 1 (EasyOCR uses 0-1 range)
     for conf in result["confidence"]:
         assert isinstance(conf, float)
@@ -63,7 +67,7 @@ def test_easyocr_confidence_and_boxes(easyocr_engine: EasyOCREngine, invoice_pat
     assert "boxes" in result
     assert isinstance(result["boxes"], list)
     assert len(result["boxes"]) > 0
-    
+
     # Verify box structure (each box should be a list of 4 points)
     for box in result["boxes"]:
         assert isinstance(box, list)

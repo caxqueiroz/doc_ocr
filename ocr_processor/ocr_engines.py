@@ -56,10 +56,20 @@ class EasyOCREngine(OCREngine):
                 for point in box:
                     # Each point is [x, y]
                     x, y = point
-                    converted_box.append([
-                        float(x) if isinstance(x, (int, float, np.integer, np.floating)) else 0.0,
-                        float(y) if isinstance(y, (int, float, np.integer, np.floating)) else 0.0
-                    ])
+                    converted_box.append(
+                        [
+                            (
+                                float(x)
+                                if isinstance(x, (int, float, np.integer, np.floating))
+                                else 0.0
+                            ),
+                            (
+                                float(y)
+                                if isinstance(y, (int, float, np.integer, np.floating))
+                                else 0.0
+                            ),
+                        ]
+                    )
                 boxes.append(converted_box)
 
             return {
