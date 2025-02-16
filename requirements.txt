@@ -14,3 +14,7 @@ python-dotenv
 ollama>=0.4.7
 openai>=1.0.0
 surya>=0.1.0
+pdfminer.six>=20231228
+reportlab>=4.1.0
+pypdf2>=3.0.0
+pytest>=8.0.0

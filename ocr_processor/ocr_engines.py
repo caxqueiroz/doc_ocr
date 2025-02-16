@@ -11,6 +11,7 @@ import requests
 from openai import OpenAI
 from surya.recognition import RecognitionPredictor
 from surya.detection import DetectionPredictor
+from . import pdf_utils
 from .config import config
 
 logging.basicConfig(level=logging.INFO)
@@ -86,10 +87,19 @@ class EasyOCREngine(OCREngine):
 
     def process_pdf(self, pdf_path: str) -> Dict[str, Any]:
         try:
-            pages = pdf2image.convert_from_path(pdf_path)
+            # First check if PDF has selectable text
+            if pdf_utils.has_selectable_text(pdf_path):
+                results = pdf_utils.extract_text_with_confidence(pdf_path)
+                return {"engine": "native_pdf", **results}
+
+            # If no selectable text, process with OCR
+            pages = pdf_utils.convert_pdf_to_images(pdf_path)
             results = []
             for i, page in enumerate(pages):
-                page_result = self.reader.readtext(page)
+                # Save page to temporary file
+                temp_path = f"/tmp/page_{i}.png"
+                page.save(temp_path)
+                page_result = self.reader.readtext(temp_path)
                 results.append(
                     {
                         "page": i + 1,
@@ -135,7 +145,13 @@ class TesseractEngine(OCREngine):
 
     def process_pdf(self, pdf_path: str) -> Dict[str, Any]:
         try:
-            pages = pdf2image.convert_from_path(pdf_path)
+            # First check if PDF has selectable text
+            if pdf_utils.has_selectable_text(pdf_path):
+                results = pdf_utils.extract_text_with_confidence(pdf_path)
+                return {"engine": "native_pdf", **results}
+
+            # If no selectable text, process with OCR
+            pages = pdf_utils.convert_pdf_to_images(pdf_path)
             results = []
             for i, page in enumerate(pages):
                 text = pytesseract.image_to_string(page, lang=self.lang)
@@ -162,8 +178,8 @@ class TesseractEngine(OCREngine):
 
 # Placeholder for future Vision LLM implementations
 class OllamaLLMEngine(OCREngine):
-    def __init__(self, model_name: str):
-        self.model_name = model_name
+    def __init__(self):
+        self.model_name = config.OLLAMA_DEFAULT_MODEL
 
     def _encode_image(self, image_path: str) -> str:
         with open(image_path, "rb") as f:
@@ -205,8 +221,38 @@ class OllamaLLMEngine(OCREngine):
             return {"error": str(e)}
 
     def process_pdf(self, pdf_path: str) -> Dict[str, Any]:
-        # TODO: Implement vision model processing for PDFs
-        raise NotImplementedError("PDF processing not yet implemented for this engine")
+        try:
+            # First check if PDF has selectable text
+            if pdf_utils.has_selectable_text(pdf_path):
+                results = pdf_utils.extract_text_with_confidence(pdf_path)
+                return {"engine": "native_pdf", **results}
+
+            # If no selectable text, process with OCR
+            pages = pdf_utils.convert_pdf_to_images(pdf_path)
+            results = []
+
+            for i, page in enumerate(pages):
+                # Save page to temporary file
+                temp_path = f"/tmp/page_{i}.png"
+                page.save(temp_path)
+                # Process this page with the LLM
+                result = self.process_image(temp_path)
+                if "error" in result:
+                    raise Exception(result["error"])
+                
+                results.append({
+                    "page": i + 1,
+                    "text": result["text"],
+                    "confidence": 1.0,  # LLM doesn't provide confidence scores
+                    "boxes": [],  # LLM doesn't provide bounding boxes
+                    "raw_response": result.get("raw_response"),
+                })
+
+            return {"engine": "ollama", "model": self.model_name, "pages": results}
+
+        except Exception as e:
+            logger.error(f"Error processing PDF with LLM: {str(e)}")
+            return {"error": str(e)}
 
 
 class SuryaEngine(OCREngine):
@@ -281,7 +327,13 @@ class SuryaEngine(OCREngine):
             Dict containing OCR results for each page.
         """
         try:
-            pages = pdf2image.convert_from_path(pdf_path)
+            # First check if PDF has selectable text
+            if pdf_utils.has_selectable_text(pdf_path):
+                results = pdf_utils.extract_text_with_confidence(pdf_path)
+                return {"engine": "native_pdf", **results}
+
+            # If no selectable text, process with OCR
+            pages = pdf_utils.convert_pdf_to_images(pdf_path)
             predictions = self.recognition_predictor(
                 pages, [None] * len(pages), self.detection_predictor
             )
@@ -383,5 +435,62 @@ class GPT4VisionEngine(OCREngine):
             return {"error": str(e)}
 
     def process_pdf(self, pdf_path: str) -> Dict[str, Any]:
-        # TODO: Implement PDF processing
-        raise NotImplementedError("PDF processing not yet implemented for GPT4Vision")
+        try:
+            # First check if PDF has selectable text
+            if pdf_utils.has_selectable_text(pdf_path):
+                results = pdf_utils.extract_text_with_confidence(pdf_path)
+                return {"engine": "native_pdf", **results}
+
+            # If no selectable text, process with OCR
+            pages = pdf_utils.convert_pdf_to_images(pdf_path)
+            results = []
+
+            for i, page in enumerate(pages):
+                # Save page to temporary file
+                temp_path = f"/tmp/page_{i}.png"
+                page.save(temp_path)
+                # Process with GPT-4 Vision
+                image_base64 = self._encode_image(temp_path)
+
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/jpeg;base64,{image_base64}"
+                                    },
+                                },
+                                {
+                                    "type": "text",
+                                    "text": (
+                                        "Extract all text from this image. "
+                                        "Do not interpret the text, just extract it. "
+                                        "Use JSON format"
+                                    ),
+                                },
+                            ],
+                        }
+                    ],
+                    temperature=0.5,
+                    max_tokens=1000,
+                )
+
+                results.append(
+                    {
+                        "page": i + 1,
+                        "text": response.choices[0].message.content,
+                        "confidence": 1.0,  # GPT-4 Vision doesn't provide confidence scores
+                        "boxes": [],  # GPT-4 Vision doesn't provide bounding boxes
+                        "raw_response": response.model_dump(),
+                    }
+                )
+
+            return {"engine": "gpt4-vision", "model": self.model, "pages": results}
+
+        except Exception as e:
+            logger.error(f"Error processing PDF with GPT-4 Vision: {str(e)}")
+            return {"error": str(e)}
