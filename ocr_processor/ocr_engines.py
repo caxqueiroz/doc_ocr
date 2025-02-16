@@ -48,25 +48,25 @@ class EasyOCREngine(OCREngine):
     def process_image(self, image_path: str) -> Dict[str, Any]:
         try:
             results = self.reader.readtext(image_path)
+            # Convert bounding boxes to a consistent format
+            boxes = []
+            for result in results:
+                box = result[0]  # Each box is a list of 4 points
+                converted_box = []
+                for point in box:
+                    # Each point is [x, y]
+                    x, y = point
+                    converted_box.append([
+                        float(x) if isinstance(x, (int, float, np.integer, np.floating)) else 0.0,
+                        float(y) if isinstance(y, (int, float, np.integer, np.floating)) else 0.0
+                    ])
+                boxes.append(converted_box)
+
             return {
                 "engine": "easyocr",
                 "text": " ".join([result[1] for result in results]),
                 "confidence": [float(result[2]) for result in results],
-                "boxes": [
-                    [
-                        (
-                            int(coord)
-                            if isinstance(coord, np.integer)
-                            else (
-                                float(coord)
-                                if isinstance(coord, np.floating)
-                                else coord
-                            )
-                        )
-                        for coord in box
-                    ]
-                    for box in [result[0] for result in results]
-                ],
+                "boxes": boxes,
             }
         except Exception as e:
             logger.error(f"Error processing image with EasyOCR: {str(e)}")
