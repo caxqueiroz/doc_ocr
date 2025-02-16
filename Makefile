@@ -1,8 +1,9 @@
-.PHONY: help install run-api run-cli test lint clean setup-dev setup-ollama
+.PHONY: help install run-api run-cli test lint clean setup-dev setup-ollama docker-build docker-push k8s-deploy k8s-delete
 
 # Default target when just running 'make'
 help:
 	@echo "Available commands:"
+	@echo "Development:"
 	@echo "  make install       - Install all dependencies"
 	@echo "  make setup-dev     - Setup development environment"
 	@echo "  make setup-ollama  - Setup Ollama and pull required models"
@@ -13,6 +14,16 @@ help:
 	@echo "  make test-ner      - Run NER-specific tests"
 	@echo "  make lint          - Run linting"
 	@echo "  make clean         - Clean up temporary files"
+	@echo ""
+	@echo "Docker:"
+	@echo "  make docker-build  - Build Docker image"
+	@echo "  make docker-push   - Push Docker image to registry"
+	@echo ""
+	@echo "Kubernetes:"
+	@echo "  make k8s-deploy    - Deploy to Kubernetes"
+	@echo "  make k8s-delete    - Delete Kubernetes deployment"
+	@echo "  make k8s-logs      - View application logs"
+	@echo "  make k8s-port-forward - Forward local port to service"
 
 # Install dependencies
 install:
@@ -48,6 +59,42 @@ run-cli:
 	python cli.py $(INPUT) $(OUTPUT) \
 		$(if $(ENGINES),--engines $(ENGINES),) \
 		$(if $(RECURSIVE),--recursive,)
+
+# Docker commands
+DOCKER_REGISTRY ?= docker.io
+DOCKER_REPO ?= your-repo
+IMAGE_NAME ?= ocr-processor
+IMAGE_TAG ?= latest
+
+docker-build:
+	docker build -t $(DOCKER_REGISTRY)/$(DOCKER_REPO)/$(IMAGE_NAME):$(IMAGE_TAG) .
+
+docker-push:
+	docker push $(DOCKER_REGISTRY)/$(DOCKER_REPO)/$(IMAGE_NAME):$(IMAGE_TAG)
+
+# Kubernetes commands
+k8s-deploy:
+	@echo "Creating Kubernetes resources..."
+	kubectl apply -f k8s/pvc.yaml
+	kubectl apply -f k8s/secrets.yaml
+	kubectl apply -f k8s/deployment.yaml
+	kubectl apply -f k8s/service.yaml
+	@echo "Deployment complete. Use 'make k8s-logs' to view logs"
+
+# Delete Kubernetes deployment
+k8s-delete:
+	kubectl delete -f k8s/service.yaml --ignore-not-found
+	kubectl delete -f k8s/deployment.yaml --ignore-not-found
+	kubectl delete -f k8s/secrets.yaml --ignore-not-found
+	kubectl delete -f k8s/pvc.yaml --ignore-not-found
+
+# View Kubernetes logs
+k8s-logs:
+	kubectl logs -l app=ocr-processor -f
+
+# Port forward to local machine
+k8s-port-forward:
+	kubectl port-forward svc/ocr-processor-service 8000:80
 
 # Run tests
 test:

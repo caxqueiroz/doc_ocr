@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ocr-processor
+  labels:
+    app: ocr-processor
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ocr-processor
+  template:
+    metadata:
+      labels:
+        app: ocr-processor
+    spec:
+      containers:
+      - name: ocr-processor
+        image: ocr-processor:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+        env:
+        - name: TESSERACT_PATH
+          value: "/usr/bin/tesseract"
+        - name: EASYOCR_CACHE_DIR
+          value: "/app/.cache/easyocr"
+        - name: OLLAMA_BASE_URL
+          value: "http://ollama-service:11434"
+        - name: OLLAMA_DEFAULT_MODEL
+          value: "llama3.2-vision:latest"
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ocr-secrets
+              key: openai-api-key
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: output
+          mountPath: /app/output
+        - name: temp
+          mountPath: /tmp/ocr_processor
+      volumes:
+      - name: output
+        persistentVolumeClaim:
+          claimName: ocr-output-pvc
+      - name: temp
+        emptyDir: {}
