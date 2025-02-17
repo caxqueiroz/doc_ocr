@@ -10,7 +10,14 @@ logger = logging.getLogger(__name__)
 
 class PaddleOCREngine(OCREngine):
     def __init__(self, languages: str = "en"):
-        self.reader = PaddleOCR(use_angle_cls=True, lang=languages)
+        # Optimize for CPU performance
+        self.reader = PaddleOCR(
+            use_angle_cls=True,
+            lang=languages,
+            use_gpu=False,  # Use CPU
+            cpu_threads=6,  # Utilize multiple CPU cores
+            enable_mkldnn=False  # Disable MKL-DNN due to compatibility issues
+        )
 
     def process_image(self, image_path: str) -> Dict[str, Any]:
         try:
