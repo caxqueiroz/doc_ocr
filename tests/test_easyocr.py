@@ -31,20 +31,70 @@ def test_easyocr_invoice_processing(
     assert "text" in result
     assert isinstance(result["text"], str)
     assert len(result["text"]) > 0
-
-    # Check for expected invoice content
-    text = result["text"].lower()
-    expected_terms = [
-        "order",
-        "list",
-        "ship",
-        "quantity",
-        "mattress",
+    
+    # Get the extracted text
+    text = result["text"]
+    
+    # 1. Order Information
+    assert "85714" in text, "Order number not found"
+    assert "february 2025" in text.lower(), "Order date not found"
+    
+    # 2. Product Information
+    product_terms = [
+        "scandinavian",
+        "beech",
+        "wood",
+        "bunk",  # OCR sometimes reads 'bunk' instead of 'kids'
         "bed",
+        "trundle",
+        "cubble",
+        "mattress",
+        "hybrid",
+        "medium",
+        "firm",
+        "zest",
+    ]
+    found_terms = sum(1 for term in product_terms if term.lower() in text.lower())
+    assert found_terms >= len(product_terms) * 0.8, f"Only found {found_terms} out of {len(product_terms)} product terms"
+    
+    # 3. Dimensions and Specifications
+    dimension_terms = [
+        ["w1200", "w12oo", "w12o0"],  # Account for OCR variations
+        ["l1900", "l19oo", "l19o0"],
+        ["super single"],
+    ]
+    for term_variants in dimension_terms:
+        found = any(variant.lower() in text.lower() for variant in term_variants)
+        assert found, f"No variant of {term_variants[0]} found in dimensions"
+    
+    # 4. Customer Information
+    customer_terms = [
+        "carlos queiroz",
+        "kellock road",
+        "singapore",
+        "+6591937205",
+    ]
+    for term in customer_terms:
+        assert term.lower() in text.lower(), f"Customer info '{term}' not found"
+    
+    # 5. Additional Services
+    service_terms = [
+        "carry-up",
+        "disposal",
+        "service",
+        "level",
+    ]
+    for term in service_terms:
+        assert term.lower() in text.lower(), f"Service term '{term}' not found"
+    
+    # 6. Company Information
+    company_terms = [
+        "loft home",
+        "gambles crescent",
         "singapore",
     ]
-    for term in expected_terms:
-        assert term in text, f"Expected to find '{term}' in extracted text"
+    for term in company_terms:
+        assert term.lower() in text.lower(), f"Company info '{term}' not found"
 
 
 def test_easyocr_confidence_and_boxes(
