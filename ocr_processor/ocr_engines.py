@@ -5,6 +5,7 @@ from .tesseract_engine import TesseractEngine
 from .ollama_engine import OllamaLLMEngine
 from .gpt4_vision_engine import GPT4VisionEngine
 from .surya_engine import SuryaEngine
+from .paddle_ocr_engine import PaddleOCREngine
 
 # Export all engines
 __all__ = [
@@ -13,5 +14,6 @@ __all__ = [
     'TesseractEngine',
     'OllamaLLMEngine',
     'GPT4VisionEngine',
-    'SuryaEngine'
+    'SuryaEngine',
+    'PaddleOCREngine'
 ]
